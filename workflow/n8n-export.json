@@ -1,0 +1,947 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "6b537daf-8423-4a1a-9b16-414d7a68c9b6",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        96
+      ],
+      "id": "09b9c164-89d6-4de5-8787-d3a93abaec77",
+      "name": "Webhook",
+      "webhookId": "6b537daf-8423-4a1a-9b16-414d7a68c9b6"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Webhook').item.json.body.role }}:\n{{ $('Webhook').item.json.body.message }}",
+        "options": {
+          "systemMessage": "You are a construction scope-extraction assistant for a demo tool that helps \nIndonesian homeowners and small contractors avoid disputes over project scope.\n\nTASK\nExtract a structured baseline scope from a free-text project description. \nThe input may come from either a homeowner or a contractor, in Bahasa \nIndonesia (may mix in some English/construction jargon) — handle both \nframings the same way.\n\nOUTPUT FORMAT\nReturn ONLY valid JSON, no markdown formatting, no explanation text before \nor after. Exact schema:\n\n{\n  \"scope_items\": [\n    { \"item\": string, \"detail\": string | null }\n  ],\n  \"exclusions\": [\n    { \"item\": string, \"reason\": string | null }\n  ],\n  \"price\": number | null,\n  \"price_currency\": \"IDR\",\n  \"timeline\": string | null,\n  \"completeness\": \"complete\" | \"partial\",\n  \"missing_info_note\": string | null\n}\n\nFIELD RULES\n- scope_items: every distinct work item mentioned (e.g. \"ganti keramik lantai\", \n  \"pasang kitchen set\"). Split compound items into separate entries when they \n  are independently completable.\n- exclusions: anything explicitly stated as NOT included. Leave as empty array \n  if none mentioned — do not invent exclusions.\n- price: extract the numeric value only (e.g. \"25 juta\" → 25000000). If no \n  price is mentioned, use null.\n- timeline: keep as stated in natural language (e.g. \"3 minggu\"). Use null \n  if not mentioned.\n- completeness: mark \"partial\" if the input is missing price, timeline, OR \n  has fewer than 2 concrete scope items — this signals the baseline may be \n  too thin for reliable change-order comparison later. Otherwise \"complete\".\n- missing_info_note: if completeness is \"partial\", write ONE short sentence \n  (in Bahasa Indonesia) naming what's missing, e.g. \"Timeline tidak \n  disebutkan.\" If completeness is \"complete\", use null.\n\nCONSTRAINTS\n- Base your extraction only on what is explicitly stated in the input. Do \n  not infer or add scope items, prices, or exclusions that were not \n  mentioned, even if they seem like reasonable assumptions for the project \n  type. If uncertain whether something counts as a scope item, do not \n  include it.\n- Do not fabricate or estimate a price if none is given — use null.\n- Output must be parseable JSON. Do not wrap it in code fences or add \n  commentary.\n\nEXAMPLES\n\nInput: \"Saya mau renovasi dapur rumah, budget 25 juta, target selesai 3 \nminggu. Termasuk: ganti keramik lantai dan dinding, pasang kitchen \nset/cabinet baru, cat ulang dinding. Nggak termasuk peralatan dapur (kompor, \nkulkas dll) karena itu saya beli sendiri.\"\n\nOutput:\n{\n  \"scope_items\": [\n    { \"item\": \"ganti keramik lantai\", \"detail\": null },\n    { \"item\": \"ganti keramik dinding\", \"detail\": null },\n    { \"item\": \"pasang kitchen set/cabinet baru\", \"detail\": null },\n    { \"item\": \"cat ulang dinding\", \"detail\": null }\n  ],\n  \"exclusions\": [\n    { \"item\": \"peralatan dapur (kompor, kulkas)\", \"reason\": \"dibeli sendiri oleh owner\" }\n  ],\n  \"price\": 25000000,\n  \"price_currency\": \"IDR\",\n  \"timeline\": \"3 minggu\",\n  \"completeness\": \"complete\",\n  \"missing_info_note\": null\n}\n\nInput: \"Renov dapur 25jt, 3 minggu.\"\n\nOutput:\n{\n  \"scope_items\": [],\n  \"exclusions\": [],\n  \"price\": 25000000,\n  \"price_currency\": \"IDR\",\n  \"timeline\": \"3 minggu\",\n  \"completeness\": \"partial\",\n  \"missing_info_note\": \"Item pekerjaan spesifik tidak disebutkan.\"\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        0,
+        336
+      ],
+      "id": "00a82f8e-2163-4354-a69f-171494cc1d12",
+      "name": "AI Agent",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "7603d668-47de-405d-832b-7dcead502373",
+              "leftValue": "={{ $json }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        96
+      ],
+      "id": "93282a71-52dd-4c35-b9c9-a3d2c9803e7a",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.6-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -544,
+        144
+      ],
+      "id": "92fc03eb-f763-4525-8d74-0d7562dcce11",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "rkibTPGpI3Mi2OeR",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e4019c2f-6d88-40b1-a658-09f101e428fa",
+              "leftValue": "={{ $json.success }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        336
+      ],
+      "id": "66915cbb-5eca-4384-ab6e-999a91613101",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b1f18a39-c888-41db-be60-bc63393a6e24",
+              "name": "reply",
+              "value": "=Baseline scope tersimpan: {{ $('If1').item.json.scope_items.length }} item pekerjaan, budget Rp {{ $('If1').item.json.price.format('id-ID') }}, timeline {{ $('If1').item.json.timeline }}",
+              "type": "string"
+            },
+            {
+              "id": "04a488f4-fef7-46b8-8c11-6d62d0e314f1",
+              "name": "classification",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        880,
+        336
+      ],
+      "id": "f9d21947-a784-416a-9ade-e085119ec1a5",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        0,
+        1184
+      ],
+      "id": "1d6e0149-9f4e-4e15-9e6d-16750c36968b",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Baseline: {{ JSON.stringify($('Parse data from airtable').item.json.scope_items) }}, {{ JSON.stringify($('Parse data from airtable').item.json.exclusions) }}\n\nPesan dari {{ $('Webhook').item.json.body.role }}: {{ $('Webhook').item.json.body.message }}",
+        "options": {
+          "systemMessage": "=You are a scope-change classification assistant for a demo tool that helps \nIndonesian homeowners and small contractors avoid disputes over project scope. \nThis is Stage 2: evaluating a new message against an already-established \nbaseline scope.\n\nCONTEXT\nYou will receive: (1) the baseline scope for this project (items, exclusions, \nprice, timeline) and (2) a new message from either the homeowner or the \ncontractor. Determine whether this message represents a scope change and, if \nso, what kind.\n\nTASK\nClassify the message into exactly one category:\n\n- \"in-scope\": the message refers to something already covered by an existing \n  scope item, with no material change to cost or effort (e.g. specifying a \n  color/detail within an item already listed).\n- \"out-of-scope\": the message introduces a new work item not present in the \n  baseline at all.\n- \"ambiguous\": the message modifies an existing scope item in a way that \n  MAY have cost or effort implications, but it's not clear from the message \n  alone (e.g. upgrading a material, expanding a listed item's size/quantity, \n  changing a spec within an existing item).\n- \"not-scope-related\": the message is not about project scope at all \n  (greetings, status questions, thanks, unrelated small talk).\n\nCRITICAL RULE — do not classify by keyword presence alone\nA message can reference an item that already exists in scope_items and still \nbe \"ambiguous\" or \"out-of-scope\" if it changes the SPECIFICATION of that item \nin a way that could affect cost (e.g. baseline says \"ganti keramik dinding\" \nand the message says \"ganti jadi granit\" — granite is a materially different \nand typically costlier material than generic keramik, so this is \"ambiguous\", \nnot \"in-scope\", even though \"keramik dinding\" is literally mentioned). Always \nreason about whether the SUBSTANCE of the request matches what was originally \nscoped, not just whether the same words appear.\n\nOUTPUT FORMAT\nReturn ONLY valid JSON, no markdown formatting, no explanation text before or \nafter. Exact schema:\n\n{\n  \"classification\": \"in-scope\" | \"out-of-scope\" | \"ambiguous\" | \"not-scope-related\",\n  \"matched_item\": string | null,\n  \"reasoning\": string,\n  \"reply\": string,\n  \"clarifying_question\": string | null\n}\n\nFIELD RULES\n- matched_item: the scope_items entry this message relates to, if any. null \n  if out-of-scope or not-scope-related.\n- reasoning: ONE short sentence in Bahasa Indonesia explaining the \n  classification — this is for internal logging, not shown to the user \n  verbatim, but must be accurate and specific (not generic).\n- reply: a short message in Bahasa Indonesia to show the user in the chat, \n  written for a non-technical homeowner or contractor to read directly. \n  - For \"in-scope\": confirm briefly, no drama (e.g. \"Oke, itu masih dalam \n    scope yang sudah disepakati.\")\n  - For \"out-of-scope\": state plainly that it's additional, in one sentence, \n    without inventing a specific cost estimate (\"Ini di luar scope awal, \n    perlu disepakati dulu biaya dan waktu tambahannya.\")\n  - For \"ambiguous\": frame it as needing clarification, and this should \n    lead naturally into clarifying_question.\n  - For \"not-scope-related\": respond naturally and briefly, do not force it \n    into scope discussion.\n- clarifying_question: REQUIRED (non-null) when classification is \n  \"ambiguous\". A specific, answerable question addressed to both parties \n  about the cost/effort implication — not a generic \"bisa dijelaskan lebih \n  detail?\". null for all other classifications.\n\nCONSTRAINTS\n- Base your classification only on the provided baseline and the message. Do \n  not assume standard industry practice fills in missing information — if the \n  baseline doesn't specify a material/spec and the message doesn't clarify, \n  treat it as ambiguous rather than guessing.\n- Do not fabricate cost estimates, percentages, or specific rupiah amounts \n  anywhere in your output.\n- Output must be parseable JSON. Do not wrap it in code fences or add \n  commentary.\n\nEXAMPLES\n\nBaseline: scope_items includes {\"item\": \"ganti keramik lantai\"}, \n{\"item\": \"pasang kitchen set/cabinet baru\"}\nMessage (Contractor): \"Keramik lantainya kita pasang warna putih polos ya \nsesuai standar\"\n\nOutput:\n{\n  \"classification\": \"in-scope\",\n  \"matched_item\": \"ganti keramik lantai\",\n  \"reasoning\": \"Warna adalah detail dalam item yang sudah disepakati, tidak ada indikasi perubahan biaya.\",\n  \"reply\": \"Oke, itu masih dalam scope yang sudah disepakati.\",\n  \"clarifying_question\": null\n}\n\nBaseline: scope_items includes {\"item\": \"ganti keramik lantai\"}, \n{\"item\": \"ganti keramik dinding\"}, {\"item\": \"pasang kitchen set/cabinet baru\"}, \n{\"item\": \"cat ulang dinding\"}\nMessage (Homeowner): \"Eh, bisa sekalian pasang lampu taman di belakang \nnggak?\"\n\nOutput:\n{\n  \"classification\": \"out-of-scope\",\n  \"matched_item\": null,\n  \"reasoning\": \"Lampu taman tidak terkait dengan item renovasi dapur manapun di baseline.\",\n  \"reply\": \"Ini di luar scope awal (renovasi dapur), perlu disepakati dulu biaya dan waktu tambahannya kalau mau ditambahkan.\",\n  \"clarifying_question\": null\n}\n\nBaseline: scope_items includes {\"item\": \"ganti keramik dinding\"}\nMessage (Contractor): \"Ganti keramik dindingnya jadi granit ya, bukan \nkeramik biasa\"\n\nOutput:\n{\n  \"classification\": \"ambiguous\",\n  \"matched_item\": \"ganti keramik dinding\",\n  \"reasoning\": \"Granit adalah material berbeda dari keramik standar dan biasanya lebih mahal, tapi baseline tidak menyebutkan spesifikasi material asli.\",\n  \"reply\": \"Ganti material ke granit bisa mempengaruhi biaya dibanding keramik biasa — perlu dikonfirmasi dulu.\",\n  \"clarifying_question\": \"Apakah penggantian ke granit ini disepakati dengan tambahan biaya, atau tetap dalam budget awal?\"\n}\n\nBaseline: scope_items includes {\"item\": \"pasang kitchen set/cabinet baru\"}\nMessage (Homeowner): \"Kitchen set-nya mau yang lebih bagus, bisa upgrade \nmaterialnya?\"\n\nOutput:\n{\n  \"classification\": \"ambiguous\",\n  \"matched_item\": \"pasang kitchen set/cabinet baru\",\n  \"reasoning\": \"Permintaan upgrade material tidak menyebutkan spesifikasi baru yang jelas, berpotensi mempengaruhi biaya.\",\n  \"reply\": \"Upgrade material kitchen set bisa mempengaruhi biaya — perlu dikonfirmasi dulu spesifikasinya.\",\n  \"clarifying_question\": \"Material seperti apa yang diinginkan, dan apakah owner bersedia menambah budget untuk upgrade ini?\"\n}\n\nMessage: \"Makasih ya, progressnya oke banget\"\n\nOutput:\n{\n  \"classification\": \"not-scope-related\",\n  \"matched_item\": null,\n  \"reasoning\": \"Pesan berupa ucapan terima kasih, tidak menyangkut perubahan scope.\",\n  \"reply\": \"Sama-sama! Senang progressnya sesuai ekspektasi.\",\n  \"clarifying_question\": null\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        208,
+        624
+      ],
+      "id": "ea6f5970-c6fa-41d7-a11a-cc6bbee5b5e0",
+      "name": "AI Agent1",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b2dbda43-4f54-41da-9562-0086e295537a",
+              "leftValue": "={{ $json.success }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        752,
+        624
+      ],
+      "id": "70854820-492c-477b-947c-f906b63da845",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "156ae112-3b29-457a-beaa-d19913262c60",
+              "leftValue": "={{ [\"out-of-scope\", \"ambiguous\"].includes($json.classification) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        0,
+        944
+      ],
+      "id": "729ff434-ffdb-417a-833a-0f86a0a69a11",
+      "name": "If3"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c03a16a0-f28d-49a6-aa94-0d3f88b2e278",
+              "name": "reply",
+              "value": "={{ $('Parse Classification').item.json.reply }}",
+              "type": "string"
+            },
+            {
+              "id": "cabb11ab-6b36-489e-b297-625399e0489f",
+              "name": "classification",
+              "value": "={{ $('Parse Classification').item.json.classification }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        944
+      ],
+      "id": "73fbc165-94f1-4d3e-b35b-7835dff1cff7",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appBblHO9Rtb4pxdV",
+          "mode": "list",
+          "cachedResultName": "nexdigital",
+          "cachedResultUrl": "https://airtable.com/appBblHO9Rtb4pxdV"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbljLm77caascUCu2",
+          "mode": "list",
+          "cachedResultName": "ChangeRequests",
+          "cachedResultUrl": "https://airtable.com/appBblHO9Rtb4pxdV/tbljLm77caascUCu2"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "session_id": "={{ $('Webhook').item.json.body.session_id }}",
+            "message": "={{ $('Webhook').item.json.body.message }}",
+            "role": "={{ $('Webhook').item.json.body.role }}",
+            "classification": "={{ $json.classification }}",
+            "matched_item": "={{ $json.matched_item }}",
+            "clarifying_question": "={{ $json.clarifying_question }}",
+            "reasoning": "={{ $json.reasoning }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "role",
+              "displayName": "role",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Homeowner",
+                  "value": "Homeowner"
+                },
+                {
+                  "name": "Contractor",
+                  "value": "Contractor"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "classification",
+              "displayName": "classification",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "out-of-scope",
+                  "value": "out-of-scope"
+                },
+                {
+                  "name": "ambiguous",
+                  "value": "ambiguous"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "matched_item",
+              "displayName": "matched_item",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "clarifying_question",
+              "displayName": "clarifying_question",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "reasoning",
+              "displayName": "reasoning",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Created",
+              "displayName": "Created",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        224,
+        848
+      ],
+      "id": "080ac898-7466-4555-bfb6-f20abaeaf159",
+      "name": "Create a record1",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "RSkr8ipRX10vIpPv",
+          "name": "nex"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = [];\n\nfor (const item of $input.all()) {\n  try {\n    const record = item.json.fields;\n    \n    const scopeItems = JSON.parse(record['Scope Items'] || '[]');\n    const exclusions = JSON.parse(record['Exclusions'] || '[]');\n    \n    items.push({\n      json: {\n        success: true,\n        session_id: record.session_id,\n        scope_items: scopeItems,\n        exclusions: exclusions,\n        price: record.Price,\n        timeline: record.Timeline,\n        raw_input: record['Raw Input']\n      }\n    });\n  } catch (error) {\n    items.push({\n      json: {\n        success: false,\n        error: error.message,\n        raw_record: item.json\n      }\n    });\n  }\n}\n\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        624
+      ],
+      "id": "40dae9c2-ff27-4a82-ba7e-89af76f332d4",
+      "name": "Parse data from airtable"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appBblHO9Rtb4pxdV",
+          "mode": "list",
+          "cachedResultName": "nexdigital",
+          "cachedResultUrl": "https://airtable.com/appBblHO9Rtb4pxdV"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblPuglx7xwBZoSdZ",
+          "mode": "list",
+          "cachedResultName": "BaselineScope",
+          "cachedResultUrl": "https://airtable.com/appBblHO9Rtb4pxdV/tblPuglx7xwBZoSdZ"
+        },
+        "filterByFormula": "={session_id} = '{{ $json.body.session_id }}'",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        224,
+        96
+      ],
+      "id": "c2a6e94f-07bd-48b5-9abd-e5bda99405cc",
+      "name": "Search BaselineScope",
+      "alwaysOutputData": true,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "RSkr8ipRX10vIpPv",
+          "name": "nex"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = [];\n\nfor (const item of $input.all()) {\n  try {\n    const rawText = item.json.output;\n    \n    // jaga-jaga kalau Gemini masih wrap dalam ```json\n    const cleaned = rawText.replace(/^```json\\s*/i, '').replace(/```\\s*$/i, '').trim();\n    \n    const parsed = JSON.parse(cleaned);\n    \n    items.push({\n      json: {\n        success: true,\n        ...parsed\n      }\n    });\n  } catch (error) {\n    items.push({\n      json: {\n        success: false,\n        error: error.message,\n        raw_response: item.json.output || 'no output found'\n      }\n    });\n  }\n}\n\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        288,
+        336
+      ],
+      "id": "06b34bec-15bb-4ea1-b694-880ba7f7ef3d",
+      "name": "Parse BaselineScope",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = [];\n\nfor (const item of $input.all()) {\n  try {\n    const rawText = item.json.output;\n    \n    const cleaned = rawText.replace(/^```json\\s*/i, '').replace(/```\\s*$/i, '').trim();\n    \n    const parsed = JSON.parse(cleaned);\n    \n    // validasi minimal - pastiin classification-nya salah satu dari 4 kategori yang valid\n    const validClassifications = ['in-scope', 'out-of-scope', 'ambiguous', 'not-scope-related'];\n    if (!validClassifications.includes(parsed.classification)) {\n      throw new Error(`Invalid classification value: ${parsed.classification}`);\n    }\n    \n    // ambiguous WAJIB punya clarifying_question, cek konsistensi\n    if (parsed.classification === 'ambiguous' && !parsed.clarifying_question) {\n      throw new Error('Classification ambiguous tapi clarifying_question kosong');\n    }\n    \n    items.push({\n      json: {\n        success: true,\n        ...parsed\n      }\n    });\n  } catch (error) {\n    items.push({\n      json: {\n        success: false,\n        error: error.message,\n        raw_response: item.json.output || 'no output found'\n      }\n    });\n  }\n}\n\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        624
+      ],
+      "id": "f7cc0e34-2143-4f11-a458-b0412be9416c",
+      "name": "Parse Classification",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appBblHO9Rtb4pxdV",
+          "mode": "list",
+          "cachedResultName": "nexdigital",
+          "cachedResultUrl": "https://airtable.com/appBblHO9Rtb4pxdV"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblPuglx7xwBZoSdZ",
+          "mode": "list",
+          "cachedResultName": "BaselineScope",
+          "cachedResultUrl": "https://airtable.com/appBblHO9Rtb4pxdV/tblPuglx7xwBZoSdZ"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "session_id": "={{ $('Webhook').item.json.body.session_id }}",
+            "Scope Items": "={{ JSON.stringify($json.scope_items) }}",
+            "Exclusions": "={{ JSON.stringify($json.exclusions) }}",
+            "Price": "={{ $json.price }}",
+            "Timeline": "={{ $json.timeline }}",
+            "Raw Input": "={{ $('Webhook').item.json.body.message }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Scope Items",
+              "displayName": "Scope Items",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Exclusions",
+              "displayName": "Exclusions",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Price",
+              "displayName": "Price",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Timeline",
+              "displayName": "Timeline",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Raw Input",
+              "displayName": "Raw Input",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Session Link",
+              "displayName": "Session Link",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        656,
+        336
+      ],
+      "id": "79365ae5-afc8-480f-bec7-1b9855a6dc65",
+      "name": "Create a record BaselineScope",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "RSkr8ipRX10vIpPv",
+          "name": "nex"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b1f18a39-c888-41db-be60-bc63393a6e24",
+              "name": "reply",
+              "value": "=Maaf, ada kendala teknis memproses baseline ini. Coba kirim ulang.",
+              "type": "string"
+            },
+            {
+              "id": "04a488f4-fef7-46b8-8c11-6d62d0e314f1",
+              "name": "classification",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        976,
+        512
+      ],
+      "id": "192f1660-76cc-478a-9b49-3ba1651d639c",
+      "name": "Edit Fields3"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b1f18a39-c888-41db-be60-bc63393a6e24",
+              "name": "reply",
+              "value": "=Maaf, ada kendala teknis memproses baseline ini. Coba kirim ulang.",
+              "type": "string"
+            },
+            {
+              "id": "04a488f4-fef7-46b8-8c11-6d62d0e314f1",
+              "name": "classification",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        976,
+        640
+      ],
+      "id": "82d2db96-8c8c-4943-8b52-ff5949f94863",
+      "name": "Edit Fields4"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Search BaselineScope",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse BaselineScope",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parse data from airtable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Create a record BaselineScope",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Parse Classification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "If3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If3": {
+      "main": [
+        [
+          {
+            "node": "Create a record1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a record1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse data from airtable": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search BaselineScope": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse BaselineScope": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Classification": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a record BaselineScope": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields3": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields4": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4f4c55d8c150a4e7399fd39728a9741e98d9fb26c972e8ea0984f3d55207af6e"
+  }
+}

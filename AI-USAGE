@@ -1,0 +1,64 @@
+# AI Usage Note
+
+This project used AI at three distinct layers: research, build acceleration,
+and the product's own AI logic. Documented separately because they served
+different purposes and required different judgment calls.
+
+## 1. Research
+
+**Perplexity** — grounded search on scope/contract disputes in Indonesian
+residential construction and franchise sectors, to validate the problem was
+real before committing build time to it. Cross-checked source tiers
+(government/established media vs. small university OJS journals) rather
+than accepting the first statistic found — several early figures were
+flagged as unverifiable and excluded from the final presentation rather
+than cited as fact.
+
+## 2. Planning and build acceleration
+
+**Claude** — used to:
+
+- Evaluate and reject three alternative problem ideas (contract
+  risk-analyzer, conversational contract generator, franchise
+  risk-checker) before settling on the construction scope/change-order
+  tool — documented with reasons in the presentation, not just the final
+  choice.
+- Design the two-stage architecture (baseline extraction → change
+  classification) and scope decisions under the 8-hour timebox — including
+  deciding _against_ building a WhatsApp-group automation feature mid-build
+  due to reliability risk for a live demo.
+- Write and iterate the Gemini system prompts for both stages, including
+  the "classify by substance, not keyword match" rule that was added after
+  testing an adversarial case (keramik → granit).
+- Debug the n8n workflow, including catching an unwired error branch that
+  would have caused a silent infinite retry loop with no response ever
+  sent back to the frontend — found before the live demo, not during it.
+
+**Claude Code** — used to generate and iterate the frontend chat UI
+(`frontend/index.html`), scoped explicitly to a single file, zero
+dependencies, zero build step, to minimize failure risk during a live
+demonstration.
+
+## 3. The product's own AI layer
+
+**Google Gemini**, called via n8n AI Agent nodes, powers the application
+itself:
+
+- Stage 1: extracts a structured scope baseline (items, exclusions, price,
+  timeline) from free-text project descriptions in Bahasa Indonesia.
+- Stage 2: classifies incoming messages against that baseline
+  (in-scope / out-of-scope / ambiguous / not-scope-related) and generates
+  either a confirmation reply or a targeted clarifying question.
+
+Both prompts are included in `/prompts/` and were written to explicitly
+avoid keyword-only matching in favor of reasoning about cost/effort
+substance — a distinction validated through manual adversarial testing,
+not assumed to work by default.
+
+## What AI did not decide
+
+Problem selection, architecture trade-offs, scope cuts under the timebox,
+and the decision to decline the WhatsApp integration were made by
+reviewing AI-generated options and analysis, not accepted automatically —
+each is traceable to a specific reasoning step in the presentation's
+"Analysis & Approach" and "Build Process" sections.

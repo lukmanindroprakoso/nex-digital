@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Scope Tracker Chat</title>
+    <style>
+      :root {
+        --bg: #f4f5f7;
+        --panel: #ffffff;
+        --border: #d9dce1;
+        --text: #1c2430;
+        --muted: #667085;
+        --accent: #1f4e9c;
+        --home: #e8f0fc;
+        --contractor: #fdf1e3;
+        --ai: #f1f2f4;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          sans-serif;
+        font-size: 18px;
+        color: var(--text);
+        background: var(--bg);
+        display: flex;
+        justify-content: center;
+      }
+      .app {
+        width: 100%;
+        max-width: 900px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        background: var(--panel);
+        border-left: 1px solid var(--border);
+        border-right: 1px solid var(--border);
+      }
+      header {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      header h1 {
+        margin: 0;
+        font-size: 20px;
+      }
+      .toggle {
+        display: inline-flex;
+        border: 2px solid var(--accent);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .toggle button {
+        font: inherit;
+        font-weight: 600;
+        padding: 8px 22px;
+        border: 0;
+        background: #fff;
+        color: var(--accent);
+        cursor: pointer;
+      }
+      .toggle button[aria-pressed="true"] {
+        background: var(--accent);
+        color: #fff;
+      }
+      .sending-as {
+        font-size: 14px;
+        color: var(--muted);
+        width: 100%;
+      }
+
+      #messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .empty {
+        color: var(--muted);
+        text-align: center;
+        margin: auto;
+      }
+      .msg {
+        max-width: 80%;
+        padding: 10px 14px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        line-height: 1.4;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+      .msg.homeowner {
+        background: var(--home);
+        align-self: flex-start;
+      }
+      .msg.contractor {
+        background: var(--contractor);
+        align-self: flex-end;
+      }
+      .msg.ai {
+        background: var(--ai);
+        align-self: flex-start;
+      }
+      .msg.error {
+        background: #fdecea;
+        border-color: #f0b4ae;
+        color: #8a1c14;
+        align-self: stretch;
+        max-width: 100%;
+      }
+      .meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 4px;
+        font-size: 13px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+      }
+      .badge {
+        font-size: 12px;
+        padding: 2px 9px;
+        border-radius: 999px;
+        color: #fff;
+        letter-spacing: 0.03em;
+      }
+      .badge.in-scope {
+        background: #1e8e3e;
+      }
+      .badge.ambiguous {
+        background: #e0a800;
+        color: #1c2430;
+      }
+      .badge.out-of-scope {
+        background: #d33a2c;
+      }
+      .badge.baseline {
+        background: #5b6b82;
+      }
+      #hint {
+        padding: 8px 20px 0;
+        font-size: 14px;
+        color: var(--muted);
+      }
+      .typing {
+        color: var(--muted);
+        font-style: italic;
+      }
+
+      form {
+        display: flex;
+        gap: 10px;
+        padding: 16px 20px;
+        border-top: 1px solid var(--border);
+      }
+      textarea {
+        flex: 1;
+        font: inherit;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        resize: none;
+        height: 52px;
+      }
+      textarea:focus {
+        outline: 2px solid var(--accent);
+        border-color: transparent;
+      }
+      #send {
+        font: inherit;
+        font-weight: 600;
+        padding: 0 26px;
+        border: 0;
+        border-radius: 8px;
+        background: var(--accent);
+        color: #fff;
+        cursor: pointer;
+      }
+      #send:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header>
+        <h1>Scope Tracker</h1>
+        <div class="toggle" role="group" aria-label="Sender role">
+          <button type="button" id="btn-Homeowner" aria-pressed="true">
+            Homeowner
+          </button>
+          <button type="button" id="btn-Contractor" aria-pressed="false">
+            Contractor
+          </button>
+        </div>
+        <div class="sending-as">
+          Next message is sent as: <strong id="current-role">Homeowner</strong>
+        </div>
+      </header>
+
+      <div id="messages">
+        <div class="empty" id="empty">
+          No messages yet. Choose a role and send a message.
+        </div>
+      </div>
+
+      <div id="hint">Pesan pertama akan jadi baseline scope project</div>
+
+      <form id="form">
+        <textarea
+          id="input"
+          placeholder="Type a message..."
+          aria-label="Message"
+        ></textarea>
+        <button type="submit" id="send">Send</button>
+      </form>
+    </div>
+
+    <script>
+      const sessionId = crypto.randomUUID();
+      // =====================================================================
+      // >>> REPLACE THIS WITH YOUR REAL n8n WEBHOOK URL <<<
+      const WEBHOOK_URL =
+        "https://n8n.lukmanindroprakoso.com/webhook-test/6b537daf-8423-4a1a-9b16-414d7a68c9b6";
+      // =====================================================================
+
+      const ROLES = ["Homeowner", "Contractor"];
+      const BADGE_LABELS = {
+        "in-scope": "In scope",
+        ambiguous: "Ambiguous",
+        "out-of-scope": "Out of scope",
+        baseline: "📋 Baseline Scope",
+      };
+
+      let baselineSet = false; // in-memory only; resets on page reload
+      let role = "Homeowner";
+      let busy = false;
+
+      const messagesEl = document.getElementById("messages");
+      const inputEl = document.getElementById("input");
+      const sendEl = document.getElementById("send");
+      const roleLabel = document.getElementById("current-role");
+
+      function setRole(r) {
+        role = r;
+        roleLabel.textContent = r;
+        ROLES.forEach((name) =>
+          document
+            .getElementById("btn-" + name)
+            .setAttribute("aria-pressed", String(name === r)),
+        );
+      }
+      ROLES.forEach((name) =>
+        document
+          .getElementById("btn-" + name)
+          .addEventListener("click", () => setRole(name)),
+      );
+
+      function addMessage(cls, label, text, classification) {
+        const empty = document.getElementById("empty");
+        if (empty) empty.remove();
+
+        const el = document.createElement("div");
+        el.className = "msg " + cls;
+
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        const who = document.createElement("span");
+        who.textContent = label;
+        meta.appendChild(who);
+        if (classification && BADGE_LABELS[classification]) {
+          const b = document.createElement("span");
+          b.className = "badge " + classification;
+          b.textContent = BADGE_LABELS[classification];
+          meta.appendChild(b);
+        }
+        el.appendChild(meta);
+
+        const body = document.createElement("div");
+        body.textContent = text;
+        el.appendChild(body);
+
+        messagesEl.appendChild(el);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+        return el;
+      }
+
+      async function send() {
+        const text = inputEl.value.trim();
+        if (!text || busy) return;
+
+        busy = true;
+        sendEl.disabled = true;
+        inputEl.value = "";
+
+        addMessage(role.toLowerCase(), role, text);
+        const pending = addMessage("ai typing", "AI", "Thinking...");
+
+        try {
+          const res = await fetch(WEBHOOK_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              session_id: sessionId,
+              message: text,
+              role: role,
+            }),
+          });
+          if (!res.ok) throw new Error("Webhook returned HTTP " + res.status);
+
+          const data = await res.json();
+          if (!data || typeof data.reply !== "string") {
+            throw new Error(
+              'Unexpected response: missing string field "reply"',
+            );
+          }
+          pending.remove();
+          // First successful message is the baseline: show the baseline badge instead of a classification
+          const badge = baselineSet ? data.classification || null : "baseline";
+          if (!baselineSet) {
+            baselineSet = true;
+            document.getElementById("hint").hidden = true;
+          }
+          addMessage("ai", "AI", data.reply, badge);
+        } catch (err) {
+          pending.remove();
+          addMessage(
+            "error",
+            "Error",
+            "Could not get a response from the webhook. " +
+              err.message +
+              "\nCheck WEBHOOK_URL, that the n8n workflow is active, and that CORS is allowed.",
+          );
+        } finally {
+          busy = false;
+          sendEl.disabled = false;
+          inputEl.focus();
+        }
+      }
+
+      document.getElementById("form").addEventListener("submit", (e) => {
+        e.preventDefault();
+        send();
+      });
+      inputEl.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          send();
+        }
+      });
+    </script>
+  </body>
+</html>
