@@ -12,7 +12,7 @@ ambiguity, scope creep ("tambah sedikit saja"), and no structured way to
 confirm whether a mid-project request is a genuine change or already
 covered.
 
-Full research, evidence, and confidence levels: see the presentation deck.
+Full research, evidence, and confidence levels: see [`docs/presentation.pptx`](docs/presentation.pptx).
 
 ## How it works
 
@@ -72,6 +72,7 @@ Respond to Webhook → Chat UI
 ## Repo structure
 
 ```
+/docs/presentation.pptx        — presentation deck (problem, approach, architecture, etc.)
 /frontend/index.html           — chat UI
 /workflow/n8n-export.json      — full n8n workflow export
 /prompts/stage1-extraction.md  — Gemini system prompt, baseline extraction
